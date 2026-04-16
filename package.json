@@ -1,0 +1,13 @@
+{
+  "name": "mapa-covia",
+  "version": "6.0.0",
+  "description": "Covia México — Plataforma de inteligencia comercial y prospección",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "echo 'Static site — no build required'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

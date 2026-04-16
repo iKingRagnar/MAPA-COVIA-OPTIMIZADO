@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Covia Mexico — Inteligencia Comercial</title>
+  <meta name="description" content="Plataforma de inteligencia comercial y CRM para Covia Mexico">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="covia_styles.css">
+</head>
+<body>
+
+<!-- Particle canvas -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- ═══════════════════════════════════════════════════════ LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo-img-wrap">
+      <img src="assets/covia-color-rgb.png" alt="Covia" style="width:200px;height:auto;display:block;margin:0 auto 6px">
+    </div>
+    <p class="login-title" style="text-align:center;font-size:14px;color:#334155;margin-bottom:6px">Plataforma de Inteligencia Comercial</p>
+    <p style="text-align:center;font-size:12px;color:#64748b;margin-bottom:28px">Acceso restringido al equipo comercial</p>
+
+    <div id="login-error"></div>
+
+    <form id="login-form" autocomplete="off">
+      <div class="form-group">
+        <label>Correo Corporativo</label>
+        <div class="input-wrap">
+          <i class="fas fa-envelope"></i>
+          <input type="email" id="login-email" placeholder="nombre@coviacorp.com" required autocomplete="email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="input-wrap">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+      </div>
+      <button type="submit" class="btn-login" id="login-btn">
+        <span class="btn-text"><i class="fas fa-arrow-right"></i> &nbsp;Iniciar Sesión</span>
+        <span class="spinner"><i class="fas fa-circle-notch fa-spin"></i> &nbsp;Verificando...</span>
+      </button>
+    </form>
+
+    <div class="login-footer">
+      <p>Solo acceso con correo <strong>@coviacorp.com</strong> o <strong>@covia.com</strong></p>
+      <p style="margin-top:6px">¿Problemas de acceso? <a href="mailto:support@coviacorp.com">Contactar IT</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ APP -->
+<div id="app">
+
+  <!-- ─── SIDEBAR ─── -->
+  <nav id="sidebar">
+    <div class="sidebar-header" style="padding:14px 16px;justify-content:center">
+      <div class="sidebar-logo-wrap">
+        <img src="assets/covia-cc-black-rgb.png" alt="Covia" style="width:120px;height:36px;object-fit:contain">
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+
+      <div class="nav-item active" data-tab="dashboard">
+        <div class="nav-icon"><i class="fas fa-house"></i></div>
+        <span class="nav-label">Dashboard</span>
+      </div>
+
+      <div class="nav-item" data-tab="mapa">
+        <div class="nav-icon"><i class="fas fa-map-location-dot"></i></div>
+        <span class="nav-label">Mapa</span>
+      </div>
+
+      <div class="nav-item" data-tab="crm">
+        <div class="nav-icon"><i class="fas fa-users"></i></div>
+        <span class="nav-label">Leads & CRM</span>
+        <span class="nav-badge" id="nav-leads-count">—</span>
+      </div>
+
+      <div class="nav-section-label" style="margin-top:8px">Análisis</div>
+
+      <div class="nav-item" data-tab="analytics">
+        <div class="nav-icon"><i class="fas fa-chart-column"></i></div>
+        <span class="nav-label">Analytics</span>
+      </div>
+
+      <div class="nav-item" data-tab="ia">
+        <div class="nav-icon"><i class="fas fa-robot"></i></div>
+        <span class="nav-label">IA Investigación</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-info" onclick="window.APP?.logout()">
+        <div class="user-avatar"><span id="user-avatar-text">U</span></div>
+        <div class="user-details">
+          <div class="user-name" id="user-name-display">Usuario</div>
+          <div class="user-role" id="user-email-display">—</div>
+        </div>
+        <i class="fas fa-sign-out-alt" style="font-size:12px;color:var(--t3);flex-shrink:0" title="Cerrar sesión"></i>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── MAIN CONTENT ─── -->
+  <div id="main-content">
+
+    <!-- TOPBAR -->
+    <div id="topbar">
+      <div style="flex:1;min-width:0">
+        <div class="topbar-title" id="topbar-title">Dashboard Comercial</div>
+        <div class="topbar-subtitle" id="topbar-subtitle">KPIs y métricas de ventas en tiempo real</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="search-wrap" id="topbar-search-wrap" style="display:none">
+          <i class="fas fa-search"></i>
+          <input type="text" class="search-input" id="topbar-search" placeholder="Buscar leads..." oninput="handleTopbarSearch(this.value)">
+        </div>
+        <button class="topbar-btn" onclick="window.APP?.navigateTo('crm')"><i class="fas fa-plus"></i> Nuevo Lead</button>
+        <button class="topbar-btn primary" onclick="window.APP?.navigateTo('ia')"><i class="fas fa-robot"></i> IA Research</button>
+        <div style="width:1px;height:24px;background:var(--border)"></div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2)">
+          <span style="width:6px;height:6px;background:var(--green);border-radius:50%;display:inline-block;box-shadow:0 0 6px var(--green)"></span>
+          En línea
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB CONTENT -->
+    <div id="tab-content">
+
+      <!-- ══════════ DASHBOARD TAB ══════════ -->
+      <div id="tab-dashboard" class="tab-panel active">
+        <div class="dashboard-header">
+          <h2>Métricas Comerciales <span class="text-gradient">Covia Mexico</span></h2>
+          <div class="date-badge" id="current-date"></div>
+        </div>
+
+        <!-- Primary KPIs -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:10px">Indicadores Primarios</div>
+        <div class="kpi-grid" id="kpi-grid-primary"></div>
+
+        <!-- Secondary KPIs -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:10px;margin-top:4px">Eficiencia Comercial</div>
+        <div class="kpi-grid" id="kpi-grid-secondary"></div>
+
+        <!-- Charts Row -->
+        <div class="charts-row" style="margin-top:8px">
+          <div class="chart-card">
+            <div class="card-title">Pipeline por Etapa</div>
+            <div class="card-sub">Distribución de leads en el funnel</div>
+            <div class="chart-wrap" style="height:200px"><canvas id="chart-pipeline"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="card-title">Portafolio por Segmento</div>
+            <div class="card-sub">Volumen cartera + potencial (ton)</div>
+            <div class="chart-wrap" style="height:200px"><canvas id="chart-segments"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="card-title">Tendencia de Embarques</div>
+            <div class="card-sub">Últimos 7 meses (ton/mes)</div>
+            <div class="chart-wrap" style="height:200px"><canvas id="chart-trend"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Bottom Row: Top Clients + Activity -->
+        <div class="section-row" style="margin-top:8px">
+          <div class="card">
+            <div class="card-header">
+              <span class="title"><i class="fas fa-trophy" style="color:#f59e0b;margin-right:6px"></i>Top Clientes por Volumen</span>
+              <span class="action" onclick="window.APP?.navigateTo('mapa')">Ver mapa →</span>
+            </div>
+            <div class="card-body">
+              <div id="top-clients-list"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="title"><i class="fas fa-history" style="color:var(--sky);margin-right:6px"></i>Actividad Reciente</span>
+              <span class="action" onclick="window.APP?.navigateTo('crm')">Ver CRM →</span>
+            </div>
+            <div class="card-body">
+              <div id="recent-activity-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Plantas Reference -->
+        <div class="card" style="margin-top:8px">
+          <div class="card-header">
+            <span class="title"><i class="fas fa-industry" style="color:#f59e0b;margin-right:6px"></i>Plantas Covia Mexico</span>
+          </div>
+          <div class="card-body">
+            <div id="plantas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ MAPA TAB ══════════ -->
+      <div id="tab-mapa" class="tab-panel">
+        <div id="map-container">
+          <div id="leaflet-map"></div>
+          <div class="map-overlay">
+            <div class="map-filter-card">
+              <div class="map-filter-title"><i class="fas fa-filter" style="color:#004b87;margin-right:6px"></i>Filtrar por Segmento</div>
+              <div class="seg-chips" id="map-seg-filters"></div>
+            </div>
+            <div class="map-stats-card">
+              <div id="map-stats-content"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ CRM / DIRECTORIO TAB ══════════ -->
+      <div id="tab-crm" class="tab-panel" style="padding:0">
+        <!-- Sub-tabs: Directorio | Pipeline -->
+        <div id="crm-subtabs" style="display:flex;align-items:center;gap:0;padding:0 20px;background:#fff;border-bottom:1px solid rgba(0,75,135,0.09);position:sticky;top:0;z-index:10">
+          <button class="crm-subtab active" data-view="directorio" onclick="switchCRMView('directorio')" style="padding:14px 20px;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer;border-bottom:2px solid #004b87;color:#004b87;font-family:inherit">
+            <i class="fas fa-table" style="margin-right:6px"></i>Directorio
+          </button>
+          <button class="crm-subtab" data-view="pipeline" onclick="switchCRMView('pipeline')" style="padding:14px 20px;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;color:#64748b;font-family:inherit">
+            <i class="fas fa-columns" style="margin-right:6px"></i>Pipeline Kanban
+          </button>
+          <div style="flex:1"></div>
+          <div id="crm-save-indicator" class="save-indicator"><i class="fas fa-check-circle"></i> Guardado</div>
+        </div>
+
+        <!-- ── Directorio View ── -->
+        <div id="crm-view-directorio" style="padding:0">
+          <!-- Row 1: Quick-type filters -->
+          <div class="prosp-toolbar" style="padding:10px 20px 8px">
+            <div class="prosp-filter-btn active" data-tipo="all" onclick="filterDirectorio(this,'tipo','all')">
+              <i class="fas fa-list"></i> Todos <span class="cnt" id="cnt-all">—</span>
+            </div>
+            <div class="prosp-filter-btn" data-tipo="Cliente actual" onclick="filterDirectorio(this,'tipo','Cliente actual')">
+              <i class="fas fa-user-check"></i> Clientes <span class="cnt" id="cnt-cliente">—</span>
+            </div>
+            <div class="prosp-filter-btn" data-tipo="Contactado" onclick="filterDirectorio(this,'tipo','Contactado')">
+              <i class="fas fa-phone"></i> Contactados <span class="cnt" id="cnt-contactado">—</span>
+            </div>
+            <div class="prosp-filter-btn" data-tipo="Prospectado" onclick="filterDirectorio(this,'tipo','Prospectado')">
+              <i class="fas fa-binoculars"></i> Prospectos <span class="cnt" id="cnt-prosp">—</span>
+            </div>
+            <div style="width:1px;height:24px;background:rgba(0,75,135,0.12)"></div>
+            <select id="dir-seg-filter" onchange="filterDirectorio(null,'seg',this.value)" style="padding:6px 10px;border:1px solid rgba(0,75,135,0.14);border-radius:20px;font-size:12px;background:#fff;color:#334155;cursor:pointer;font-family:inherit;outline:none">
+              <option value="">Todos los Segmentos</option>
+              <option value="vidrio">Vidrio</option><option value="ceramica">Cerámica</option>
+              <option value="fundicion">Fundición</option><option value="construccion">Construcción</option>
+              <option value="fibra">Fibra de Vidrio</option><option value="deportiva">Deportiva</option>
+              <option value="ecuestre">Ecuestre</option><option value="filtracion">Filtración</option>
+              <option value="fracking">Fracking/O&G</option><option value="agricola">Agrícola</option>
+            </select>
+            <select id="dir-region-filter" onchange="filterDirectorio(null,'region',this.value)" style="padding:6px 10px;border:1px solid rgba(0,75,135,0.14);border-radius:20px;font-size:12px;background:#fff;color:#334155;cursor:pointer;font-family:inherit;outline:none">
+              <option value="">Todas las Regiones</option>
+              <option value="Norte">Norte</option><option value="Noreste">Noreste</option>
+              <option value="Noroeste">Noroeste</option><option value="Bajio">Bajío</option>
+              <option value="Centro">Centro</option><option value="Occidente">Occidente</option>
+              <option value="Sur">Sur</option><option value="Golfo">Golfo</option>
+            </select>
+            <div style="flex:1"></div>
+            <div class="search-wrap" style="max-width:200px">
+              <i class="fas fa-search"></i>
+              <input type="text" class="search-input" id="dir-search" placeholder="Buscar empresa..." oninput="filterDirectorio(null,'search',this.value)">
+            </div>
+          </div>
+          <!-- Row 2: TableEngine toolbar -->
+          <div class="dir-te-toolbar">
+            <span id="dir-count" style="font-size:12px;font-weight:700;color:var(--t2);margin-right:4px">— empresas</span>
+            <button id="dir-clear-te-btn" class="te-toolbar-btn danger" style="display:none" onclick="dirClearTeFilters()">
+              <i class="fas fa-times-circle"></i> Limpiar filtros columna
+              <span class="te-filter-count" id="dir-te-count">0</span>
+            </button>
+            <div style="flex:1"></div>
+            <button class="te-toolbar-btn" onclick="window.TableEngine?.openColManager('dir',this,event)" title="Gestionar columnas visibles">
+              <i class="fas fa-table-columns"></i> Columnas
+            </button>
+            <button class="te-toolbar-btn primary" onclick="dirExportExcel()">
+              <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+          </div>
+
+          <!-- Table -->
+          <div class="leads-table-wrap">
+            <table class="leads-table" id="directorio-table">
+              <thead id="directorio-thead"></thead>
+              <tbody id="directorio-tbody"></tbody>
+            </table>
+          </div>
+          <div id="dir-pagination" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;font-size:12px;color:#64748b"></div>
+        </div>
+
+        <!-- ── Pipeline View ── -->
+        <div id="crm-view-pipeline" style="display:none;height:calc(100vh - 105px);overflow:hidden">
+          <div class="crm-layout" style="height:100%">
+            <div id="kanban-board" class="kanban-board"></div>
+            <div id="lead-detail-panel" class="lead-detail-panel"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ ANALYTICS TAB ══════════ -->
+      <div id="tab-analytics" class="tab-panel">
+        <div class="dashboard-header" style="margin-bottom:20px">
+          <h2>Analytics <span class="text-gradient">Avanzado</span></h2>
+        </div>
+        <div class="analytics-grid">
+          <div class="chart-card full">
+            <div class="card-title">Volumen por Segmento — Cartera vs Potencial</div>
+            <div class="card-sub">Toneladas actuales vs potencial identificado en leads</div>
+            <div class="chart-wrap" style="height:280px"><canvas id="chart-vol-seg"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="card-title">Funnel de Conversión</div>
+            <div class="card-sub">Leads por etapa del pipeline</div>
+            <div class="chart-wrap" style="height:260px"><canvas id="chart-conv-funnel"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="card-title">Mapa de Prioridades</div>
+            <div class="card-sub">Score vs Potencial (ton/año)</div>
+            <div class="chart-wrap" style="height:260px"><canvas id="chart-priority-scatter"></canvas></div>
+          </div>
+          <div class="chart-card full">
+            <div class="card-title">Forecast de Volumen Mensual 2026</div>
+            <div class="card-sub">Cartera actual + forecast basado en pipeline de leads</div>
+            <div class="chart-wrap" style="height:260px"><canvas id="chart-monthly-pot"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ IA TAB ══════════ -->
+      <div id="tab-ia" class="tab-panel">
+        <div class="dashboard-header" style="margin-bottom:20px">
+          <div>
+            <h2><i class="fas fa-robot" style="margin-right:8px;background:linear-gradient(135deg,var(--navy),var(--sky));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text"></i>IA Investigación Comercial</h2>
+            <p style="font-size:13px;color:var(--t2);margin-top:4px">Análisis automático de perfil, señales de compra y recomendaciones de acción</p>
+          </div>
+          <div class="search-wrap" style="max-width:240px">
+            <i class="fas fa-search"></i>
+            <input type="text" class="search-input" placeholder="Buscar lead..." oninput="window.APP?.searchAI(this.value)">
+          </div>
+        </div>
+
+        <div class="ai-panel-layout">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
+              Leads — Ordenados por confianza IA
+            </div>
+            <div class="ai-lead-list" id="ai-lead-list"></div>
+          </div>
+
+          <div class="ai-report-card" id="ai-report-card">
+            <div class="ai-report-header">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <div style="width:28px;height:28px;background:linear-gradient(135deg,var(--navy),var(--sky));border-radius:8px;display:flex;align-items:center;justify-content:center">
+                  <i class="fas fa-robot" style="color:white;font-size:13px"></i>
+                </div>
+                <div>
+                  <div style="font-size:13px;font-weight:700" id="ai-report-title">Selecciona un lead</div>
+                  <div style="font-size:11px;color:var(--t3)" id="ai-report-sub">Reporte generado por IA</div>
+                </div>
+              </div>
+              <button class="topbar-btn primary" style="font-size:11px;height:28px;padding:0 12px;margin-top:8px" onclick="aiSelectedId && window.APP?.selectAILead(aiSelectedId)">
+                <i class="fas fa-sync-alt"></i> Regenerar
+              </button>
+            </div>
+            <div class="ai-report-body" id="ai-report-card-body"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-content -->
+  </div><!-- /main-content -->
+</div><!-- /app -->
+
+<!-- ─── TOAST CONTAINER ─── -->
+<div id="toast-container"></div>
+
+<!-- ═══════════════════════════════════════════════════════ SCRIPTS -->
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Data -->
+<script src="covia_data_clean.js"></script>
+<script src="covia_directorio.js"></script>
+<script src="covia_geocode.js"></script>
+
+<!-- CRM State -->
+<script src="covia_crm.js"></script>
+
+<!-- Table Engine -->
+<script src="covia_table_engine.js"></script>
+
+<!-- App Logic -->
+<script src="covia_app.js"></script>
+
+<!-- Inline init -->
+<script>
+// Set current date in dashboard
+document.addEventListener('DOMContentLoaded', function() {
+  const dateEl = document.getElementById('current-date');
+  if (dateEl) {
+    const now = new Date();
+    dateEl.textContent = now.toLocaleDateString('es-MX', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  }
+
+  // Set leads count in nav badge
+  setTimeout(() => {
+    const count = (window.COVIA_LEADS || []).length;
+    const badge = document.getElementById('nav-leads-count');
+    if (badge) badge.textContent = count;
+  }, 100);
+});
+
+// Render plantas grid
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => {
+    const grid = document.getElementById('plantas-grid');
+    if (!grid || !window.PLANTAS) return;
+    grid.innerHTML = Object.values(window.PLANTAS).map(p => `
+      <div style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;transition:all .2s var(--ease)" onmouseover="this.style.borderColor='rgba(245,158,11,0.3)'" onmouseout="this.style.borderColor='var(--border-glass)'">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="width:24px;height:24px;background:rgba(245,158,11,0.15);border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <i class="fas fa-industry" style="font-size:11px;color:#f59e0b"></i>
+          </div>
+          <span style="font-size:12px;font-weight:700">${p.label}</span>
+        </div>
+        <div style="font-size:10px;color:var(--t3)">${p.addr}</div>
+        <div style="font-size:10px;color:var(--t2);margin-top:2px">${p.city}, ${p.state} ${p.approx?'<span style="color:#f59e0b">(aprox.)</span>':''}</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:3px">Cluster: <span style="color:var(--t2)">${p.cluster}</span> · PID ${p.pid}</div>
+      </div>
+    `).join('');
+  }, 500);
+});
+
+// Handle topbar search (context-aware)
+function handleTopbarSearch(value) {
+  if (window.currentTab === 'crm') window.APP?.searchCRM(value);
+}
+
+// Show search bar on CRM tab
+document.querySelectorAll('.nav-item[data-tab]').forEach(el => {
+  el.addEventListener('click', () => {
+    const wrap = document.getElementById('topbar-search-wrap');
+    if (wrap) wrap.style.display = el.dataset.tab === 'crm' ? 'flex' : 'none';
+  });
+});
+
+// ── CRM Sub-view switcher ──────────────────────────────────
+function switchCRMView(view) {
+  document.getElementById('crm-view-directorio').style.display = view === 'directorio' ? 'block' : 'none';
+  document.getElementById('crm-view-pipeline').style.display  = view === 'pipeline'   ? 'block' : 'none';
+  document.querySelectorAll('.crm-subtab').forEach(btn => {
+    const active = btn.dataset.view === view;
+    btn.style.borderBottomColor = active ? '#004b87' : 'transparent';
+    btn.style.color = active ? '#004b87' : '#64748b';
+    btn.style.fontWeight = active ? '700' : '600';
+  });
+}
+
+// ── Directorio Engine (v6.3 — with TableEngine) ─────────────────────────
+const DIR_PAGE_SIZE = 50;
+let dirPage = 0;
+let dirFilters = { tipo: 'all', seg: '', region: '', search: '' };
+let dirData    = [];
+
+// Column definitions for TableEngine
+const DIR_COLUMNS = [
+  { key:'n',                label:'Empresa',          type:'text',   width:'200px' },
+  { key:'s',                label:'Segmento',         type:'text',   width:'120px' },
+  { key:'tipo',             label:'Tipo',             type:'text',   width:'130px' },
+  { key:'lead_scoring',     label:'Lead Scoring',     type:'text',   width:'110px' },
+  { key:'region',           label:'Región',           type:'text',   width:'100px' },
+  { key:'d',                label:'Ubicación',        type:'text',   width:'140px' },
+  { key:'v',                label:'Vol.Ton/año',      type:'number', width:'90px'  },
+  { key:'pot',              label:'Potencial Ton',    type:'number', width:'100px' },
+  { key:'mineral',          label:'Mineral',          type:'text',   width:'130px' },
+  { key:'prov',             label:'Proveedor Actual', type:'text',   width:'130px' },
+  { key:'vendedor',         label:'Vendedor',         type:'text',   width:'100px' },
+  { key:'plant',            label:'Planta Asignada',  type:'text',   width:'120px' },
+  { key:'distancia_km',     label:'Dist.KM',          type:'number', width:'70px'  },
+  { key:'mercado_vertical', label:'Mercado Vertical', type:'text',   width:'130px' },
+  { key:'observaciones',    label:'Observaciones',    type:'text',   width:'180px' },
+];
+
+function initDirectorio() {
+  // Build flat rows (merge enrich into each row for TE filter access)
+  dirData = (window.COVIA_DIRECTORIO || []).map((row, i) => ({...row, _id: i}));
+
+  // Initialize TableEngine
+  if (window.TableEngine) {
+    TableEngine.init({
+      id:       'dir',
+      getData:  () => getToolbarFiltered(),
+      columns:  DIR_COLUMNS,
+      title:    'Directorio Comercial',
+      onRender: () => { dirPage = 0; renderDirectorio(); }
+    });
+  }
+
+  updateDirCounts();
+  renderDirectorio();
+}
+
+function updateDirCounts() {
+  const base = window.COVIA_DIRECTORIO || [];
+  document.getElementById('cnt-all').textContent        = base.length;
+  document.getElementById('cnt-cliente').textContent    = base.filter(r=>r.tipo==='Cliente actual').length;
+  document.getElementById('cnt-contactado').textContent = base.filter(r=>r.tipo==='Contactado').length;
+  document.getElementById('cnt-prosp').textContent      = base.filter(r=>r.tipo==='Prospectado').length;
+}
+
+function filterDirectorio(btn, key, val) {
+  if (btn && key === 'tipo') {
+    document.querySelectorAll('.prosp-filter-btn[data-tipo]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (key) dirFilters[key] = val;
+  dirPage = 0;
+  renderDirectorio();
+}
+
+// Toolbar-level filter (tipo, seg, region, search text)
+function getToolbarFiltered() {
+  const q = (dirFilters.search || '').toLowerCase().trim();
+  return dirData.filter(r => {
+    const enr  = getEnrich(r);
+    const tipo = enr.tipo || r.tipo || '';
+    if (dirFilters.tipo !== 'all' && tipo !== dirFilters.tipo) return false;
+    if (dirFilters.seg    && r.s       !== dirFilters.seg)    return false;
+    if (dirFilters.region && (enr.region||r.region) !== dirFilters.region) return false;
+    if (q && !r.n.toLowerCase().includes(q) && !(r.d||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+const SEG_LABELS = {vidrio:'Vidrio',ceramica:'Cerámica',fundicion:'Fundición',construccion:'Construcción',fibra:'Fibra de Vidrio',deportiva:'Deportiva',ecuestre:'Ecuestre',filtracion:'Filtración',fracking:'Fracking',agricola:'Agrícola'};
+const SEG_COLORS = {vidrio:'#0066cc',ceramica:'#dc6803',fundicion:'#7c3aed',construccion:'#15803d',fibra:'#0284c7',deportiva:'#c2410c',ecuestre:'#854d0e',filtracion:'#0f766e',fracking:'#4338ca',agricola:'#166534'};
+
+function scoreBadge(score) {
+  if (!score) return '';
+  const cls = score==='P1-Priority'?'p1-badge':score==='P2'?'p2-badge':score==='P3'?'p3-badge':'const-badge';
+  return `<span class="${cls}">${score}</span>`;
+}
+
+function getEnrich(row) {
+  try { return JSON.parse(localStorage.getItem('covia_enrich_'+row._id)||'{}'); } catch(e){ return {}; }
+}
+function setEnrich(id, key, val) {
+  try {
+    const k = 'covia_enrich_'+id;
+    const e = JSON.parse(localStorage.getItem(k)||'{}');
+    e[key] = val; e._lastMod = new Date().toLocaleDateString('es-MX');
+    localStorage.setItem(k, JSON.stringify(e));
+    showSaveIndicator();
+  } catch(e){}
+}
+function showSaveIndicator() {
+  const el = document.getElementById('crm-save-indicator');
+  if (!el) return;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 1800);
+}
+
+// Build table header with sort+filter buttons via TableEngine
+function buildDirHead() {
+  if (!window.TableEngine) return '<tr>' + DIR_COLUMNS.map(c=>`<th>${c.label}</th>`).join('') + '<th>Acciones</th></tr>';
+  const visCols = DIR_COLUMNS.filter(c => !TableEngine.isHidden('dir', c.key));
+  return '<tr>' + visCols.map(col => TableEngine.buildTH('dir', col)).join('') + '<th class="te-th" style="min-width:80px"><div class="te-th-in"><span class="te-th-lbl">Acciones</span></div></th></tr>';
+}
+
+function renderDirectorio() {
+  // 1. Toolbar filter
+  const toolbarFiltered = getToolbarFiltered();
+
+  // 2. TableEngine sort + column filter
+  const teFiltered = window.TableEngine ? TableEngine.process('dir', toolbarFiltered) : toolbarFiltered;
+
+  const total      = teFiltered.length;
+  const totalPages = Math.ceil(total / DIR_PAGE_SIZE);
+  if (dirPage >= totalPages) dirPage = Math.max(0, totalPages - 1);
+  const slice = teFiltered.slice(dirPage * DIR_PAGE_SIZE, (dirPage + 1) * DIR_PAGE_SIZE);
+
+  // Update count
+  document.getElementById('dir-count').textContent = `${total.toLocaleString()} empresas`;
+
+  // TE active filter badge
+  const fc = window.TableEngine ? TableEngine.activeCount('dir') : 0;
+  const clearBtn  = document.getElementById('dir-clear-te-btn');
+  const countBadge = document.getElementById('dir-te-count');
+  if (clearBtn)   clearBtn.style.display  = fc > 0 ? 'inline-flex' : 'none';
+  if (countBadge) countBadge.textContent  = fc;
+
+  // Render dynamic header
+  const thead = document.getElementById('directorio-thead');
+  if (thead) thead.innerHTML = buildDirHead();
+
+  const tbody = document.getElementById('directorio-tbody');
+  if (!tbody) return;
+
+  const visCols = window.TableEngine
+    ? DIR_COLUMNS.filter(c => !TableEngine.isHidden('dir', c.key))
+    : DIR_COLUMNS;
+
+  tbody.innerHTML = slice.map(row => {
+    const enr      = getEnrich(row);
+    const tipo     = enr.tipo     !== undefined ? enr.tipo     : (row.tipo     || '');
+    const vendedor = enr.vendedor !== undefined ? enr.vendedor : (row.vendedor || '');
+    const obs      = enr.obs      !== undefined ? enr.obs      : (row.observaciones || '');
+    const scoring  = enr.scoring  !== undefined ? enr.scoring  : (row.lead_scoring  || '');
+    const region   = enr.region   !== undefined ? enr.region   : (row.region        || '');
+    const mineral  = enr.mineral  !== undefined ? enr.mineral  : (row.mineral       || '');
+    const prov     = enr.prov     !== undefined ? enr.prov     : (row.prov          || '');
+    const segColor = SEG_COLORS[row.s] || '#64748b';
+    const isCrit   = row.tp === 'a';
+
+    // Cell map keyed by column key
+    const cells = {
+      n: `<td>
+        <div style="font-weight:700;font-size:12px;color:#0f172a;line-height:1.3;max-width:200px">${row.n}</div>
+        <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+          ${row.url_google?`<a href="${row.url_google}" target="_blank" class="tbl-action-btn" style="font-size:10px"><i class="fas fa-search"></i>Google</a>`:''}
+          ${row.url_maps?`<a href="${row.url_maps}" target="_blank" class="tbl-action-btn" style="font-size:10px"><i class="fas fa-map-marker-alt"></i>Maps</a>`:''}
+        </div>
+      </td>`,
+      s: `<td><span style="background:${segColor}18;color:${segColor};border:1px solid ${segColor}33;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap">${SEG_LABELS[row.s]||row.s||'—'}</span></td>`,
+      tipo: `<td><select class="lead-edit-select" style="min-width:120px" onchange="setEnrich(${row._id},'tipo',this.value)">
+        ${['Cliente actual','Contactado','Prospectado','Identificado','Cliente perdido','No Existe'].map(t=>`<option value="${t}" ${tipo===t?'selected':''}>${t}</option>`).join('')}
+      </select></td>`,
+      lead_scoring: `<td><select class="lead-edit-select" style="min-width:110px" onchange="setEnrich(${row._id},'scoring',this.value)">
+        ${['','P1-Priority','P2','P3','Construcción'].map(s=>`<option value="${s}" ${scoring===s?'selected':''}>${s||'— Score —'}</option>`).join('')}
+      </select></td>`,
+      region: `<td><select class="lead-edit-select" style="min-width:100px" onchange="setEnrich(${row._id},'region',this.value)">
+        ${['','Norte','Noreste','Noroeste','Bajio','Centro','Occidente','Sur','Golfo'].map(r=>`<option value="${r}" ${region===r?'selected':''}>${r||'— Región —'}</option>`).join('')}
+      </select></td>`,
+      d:                `<td style="white-space:nowrap;font-size:11px;color:#475569">${row.d||'—'}</td>`,
+      v:                `<td style="text-align:right;font-weight:700;color:#0f172a;font-size:12px">${row.v?row.v.toLocaleString():'—'}</td>`,
+      pot:              `<td style="text-align:right;color:#004b87;font-weight:600;font-size:12px">${row.pot?row.pot.toLocaleString():'—'}</td>`,
+      mineral: `<td><select class="lead-edit-select" style="min-width:130px" onchange="setEnrich(${row._id},'mineral',this.value)">
+        ${['','Arena Sílica','Arena Industrial','Arenas de Fracking','Carbonato de Calcio','Cuarzo','Feldespato','Dolomita','Arena de Playa','Sílice Molida','Otro'].map(m=>`<option value="${m}" ${mineral===m?'selected':''}>${m||'— Sin mineral —'}</option>`).join('')}
+      </select></td>`,
+      prov:    `<td><input class="lead-edit-input" style="min-width:130px" value="${prov}" placeholder="Proveedor…" onchange="setEnrich(${row._id},'prov',this.value)"></td>`,
+      vendedor:`<td><input class="lead-edit-input" style="min-width:100px" value="${vendedor}" placeholder="Asignar…" onchange="setEnrich(${row._id},'vendedor',this.value)"></td>`,
+      plant:            `<td style="font-size:11px;color:#475569;white-space:nowrap">${row.plant||'—'}</td>`,
+      distancia_km:     `<td style="text-align:right;font-size:11px;color:#64748b">${row.distancia_km||'—'}</td>`,
+      mercado_vertical: `<td style="font-size:11px;color:#334155;max-width:130px">${row.mercado_vertical||row.end_market||'—'}</td>`,
+      observaciones: `<td><textarea class="lead-edit-textarea" style="min-width:180px;font-size:11px" rows="2" placeholder="Observaciones…" onchange="setEnrich(${row._id},'obs',this.value)">${obs}</textarea></td>`,
+    };
+
+    const actionCell = `<td>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${row.url_google?`<a href="${row.url_google}" target="_blank" class="tbl-action-btn"><i class="fas fa-search"></i> Research</a>`:''}
+        <button class="tbl-action-btn" onclick="addToKanban(${row._id})"><i class="fas fa-plus"></i> Pipeline</button>
+      </div>
+    </td>`;
+
+    return `<tr data-id="${row._id}">${visCols.map(col => cells[col.key] || `<td>—</td>`).join('')}${actionCell}</tr>`;
+  }).join('');
+
+  renderDirPagination(total, totalPages);
+}
+
+function renderDirPagination(total, totalPages) {
+  const pg = document.getElementById('dir-pagination');
+  if (!pg) return;
+  if (totalPages <= 1) { pg.innerHTML = ''; return; }
+  let html = `<span style="color:#334155;font-weight:600">Pág ${dirPage+1} / ${totalPages}</span>`;
+  if (dirPage > 0)              html += `<button onclick="dirPage--;renderDirectorio()" style="padding:4px 12px;border:1px solid rgba(0,75,135,.2);border-radius:7px;background:#fff;cursor:pointer;font-size:12px;color:#004b87;font-family:inherit">← Anterior</button>`;
+  if (dirPage < totalPages - 1) html += `<button onclick="dirPage++;renderDirectorio()" style="padding:4px 12px;border:1px solid rgba(0,75,135,.2);border-radius:7px;background:#fff;cursor:pointer;font-size:12px;color:#004b87;font-family:inherit">Siguiente →</button>`;
+  pg.innerHTML = html;
+}
+
+function addToKanban(id) {
+  const row = dirData.find(r => r._id === id);
+  if (!row) return;
+  if (window.CRM?.addLeadFromDirectory) {
+    window.CRM.addLeadFromDirectory(row);
+    switchCRMView('pipeline');
+    showSaveIndicator();
+  }
+}
+
+function dirClearTeFilters() {
+  if (window.TableEngine) TableEngine.clearAll('dir');
+}
+
+function dirExportExcel() {
+  if (!window.TableEngine) return;
+  // Build flat export rows (apply all filters)
+  const toolbarFiltered = getToolbarFiltered();
+  const teFiltered      = TableEngine.process('dir', toolbarFiltered);
+  const exportData = teFiltered.map(row => {
+    const enr = getEnrich(row);
+    return {
+      n:                row.n,
+      s:                SEG_LABELS[row.s] || row.s || '',
+      tipo:             enr.tipo     !== undefined ? enr.tipo     : (row.tipo     || ''),
+      lead_scoring:     enr.scoring  !== undefined ? enr.scoring  : (row.lead_scoring  || ''),
+      region:           enr.region   !== undefined ? enr.region   : (row.region        || ''),
+      d:                row.d        || '',
+      v:                row.v,
+      pot:              row.pot,
+      mineral:          enr.mineral  !== undefined ? enr.mineral  : (row.mineral       || ''),
+      prov:             enr.prov     !== undefined ? enr.prov     : (row.prov          || ''),
+      vendedor:         enr.vendedor !== undefined ? enr.vendedor : (row.vendedor      || ''),
+      plant:            row.plant    || '',
+      distancia_km:     row.distancia_km,
+      mercado_vertical: row.mercado_vertical || row.end_market || '',
+      observaciones:    enr.obs      !== undefined ? enr.obs      : (row.observaciones || ''),
+    };
+  });
+  TableEngine.exportExcel('dir', exportData);
+}
+
+// Init directorio when tab is clicked
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => {
+    initDirectorio();
+  }, 300);
+
+  // Also init on tab click
+  document.querySelectorAll('.nav-item[data-tab="crm"]').forEach(el => {
+    el.addEventListener('click', () => {
+      setTimeout(() => {
+        if (!dirData.length) initDirectorio();
+      }, 100);
+    });
+  });
+});
+</script>
+
+</body>
+</html>
